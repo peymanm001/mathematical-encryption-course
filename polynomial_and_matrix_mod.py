@@ -231,11 +231,16 @@ class Matrix:
         for i in range(size):
             for j in range(size):
                 if i != j:
-                    # fixme : fucking zero may be exist in next row too
-                    # todo: check all rows for select best row
-                    if self.itemType(0) == self.item(i, i):
-                        self.swapRows(i, i+1)
-                        iMat.swapRows(i, i+1)
+                    # fixme : in modular case, item(i, i) may has no inverse
+                    if self.item(i, i) == self.itemType(0):
+                        pivotFalg = 0
+                        for r in range(i, size):
+                            if self.item(r, i) != self.itemType(0):
+                                self.swapRows(i, r)
+                                iMat.swapRows(i, r)
+                                pivotFalg = 1
+                        if pivotFalg == 0:
+                            return False
                     #
                     tmp = self.item(j, i) / self.item(i, i)
                     for k in range(size):
