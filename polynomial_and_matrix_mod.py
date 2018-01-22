@@ -4,9 +4,10 @@
 
 # peymanm001.ir
 
+m = 5
 
 class Mod:
-    def __init__(self, value, mod=5):
+    def __init__(self, value, mod=m):
         assert (mod >= 2)
         if value < 0:
             self.value = (-(value // mod)) * mod + value
@@ -129,7 +130,7 @@ class Polynomial:
             if p1 == []:
                 return p2
             if p2 == []:
-                return p2
+                return p1
             return add(p1[1:], other.__addTerm(p2, p1[0]))
         return Polynomial(add(self.terms, other.terms))
 
@@ -152,7 +153,6 @@ class Polynomial:
         return sum([Polynomial([term * t for t in self.terms]) for term in other.terms])
 
     def __sub__(self, other):
-
         return self + (-other)
 
     def __div(self, dividend, divisor, qoutient):
@@ -184,6 +184,25 @@ class Polynomial:
             tmp += str(term) + " + "
         return tmp + str(self.terms[-1])
 
+    def gcd(self, other):
+        if other.degree == -1:
+            return self
+        return other.gcd(self % other)
+
+    def inverse(self, mod):
+        def extended(p1, p2):
+            if p2.degree == -1:
+                if p1.degree > 0:
+                    return False
+                return Polynomial([Term(0, Mod(1, p1.terms[0].coef.mod))]), p2
+            a, b = extended(p2, p1 % p2)
+            q = p1 / p2
+            return b, a - b * q
+        res = extended(mod, self)
+        if not res :
+            return False
+        return Polynomial([Term(0, mod.gcd(self).terms[0].coef.inverse())]) * res[1]
+
 
 class Matrix:
     def __init__(self, data, size=-1, itemType=int):
@@ -206,7 +225,7 @@ class Matrix:
         if self.rows == []:
             self.cols = []
         else:
-            self.cols = [[items[i][j] for j in range(len(items))] for i in range(len(items[0]))]
+            self.cols = [[items[j][i] for j in range(len(items))] for i in range(len(items[0]))]
 
     def item(self, i, j):
         return self.rows[i][j]
@@ -296,28 +315,95 @@ class Matrix:
         return s + '\n'
 
 
-p1 = Polynomial([Term(4,Mod(2,5)), Term(3,Mod(1,5)), Term(5,Mod(3,5)), Term(6,Mod(1,5))])
-p2 = Polynomial([Term(4,Mod(3,5)), Term(3,Mod(1,5)), Term(1,Mod(2,5)), Term(0, Mod(2,5))])
+# p1 = Polynomial([Term(4,Mod(2,5)), Term(3,Mod(1,5)), Term(5,Mod(3,5)), Term(6,Mod(1,5))])
+# p2 = Polynomial([Term(4,Mod(3,5)), Term(3,Mod(1,5)), Term(1,Mod(2,5)), Term(0, Mod(2,5))])
 
-print(p1)
-print(p2)
-print(p1 * p2)
-print(p1 / p2)
-print(p1 % p2)
+# print(p1)
+# print(p2)
+# print(p1 * p2)
+# print(p1 / p2)
+# print(p1 % p2)
 
-m1 = Matrix([[Mod(2,5), Mod(3,5), Mod(1,5)],
-             [Mod(1,5), Mod(4,5), Mod(2,5)],
-             [Mod(1,5), Mod(0,5), Mod(2,5)]], itemType=Mod)
+# m1 = Matrix([[Mod(2,5), Mod(3,5), Mod(1,5)],
+#              [Mod(1,5), Mod(4,5), Mod(2,5)],
+#              [Mod(1,5), Mod(0,5), Mod(2,5)]], itemType=Mod)
+#
+# m2 = Matrix([[2, 3, 1],
+#              [1, 4, 2],
+#              [1, 0, 2]])
+#
+# m3 = Matrix([[2],
+#              [3],
+#              [4]])
+# m1inv = m1.inv()
 
-m2 = Matrix([[2, 3, 1],
-             [1, 4, 2],
-             [1, 0, 2]])
-m1inv = m1.inv()
-
-print(m1)
-print(-m1)
-print(m1inv)
-print(m1 + m1inv)
-print(m1 * m1inv)
+# print(m2 * m3)
+# print(-m1)
+# print(m1inv)
+# print(m1 + m1inv)
+# print(m1 * m1inv)
 # print(Matrix("i", 3, Mod))
 
+file = open("file.txt", "rb")
+
+#key
+xorKey = bytes([0x12, 0x15, 0x22])
+bufSize = len(xorKey)
+
+res = []
+buffer = file.read(bufSize)
+while len(buffer) != 0:
+    for i in range(len(buffer)):
+        res.append(xorKey[i] ^ buffer[i])
+    buffer = file.read(bufSize)
+
+#key
+affineSize = 3
+H = Matrix([[Mod(2,m), Mod(3,m), Mod(1,m)],
+             [Mod(1,m), Mod(4,m), Mod(2,m)],
+             [Mod(1,m), Mod(0,m), Mod(2,m)]], itemType=Mod)
+
+print(H.inv())
+
+B = Matrix([[Mod(4, m)],
+            [Mod(8, m)],
+            [Mod(12, m)]])
+
+
+
+#key
+polyMod = Polynomial([Term(3, Mod(4, m)), Term(1, Mod(1, m)), Term(0, Mod(4, m))])
+polyA = Polynomial([Term(2, Mod(7, m)), Term(1, Mod(2, m)), Term(0, Mod(3, m))])
+polyB = Polynomial([Term(1, Mod(5, m)), Term(0, Mod(1, m))])
+print(polyMod)
+print(polyA)
+print(polyB)
+
+num = 1
+affinePBuffer = []
+k = 0
+for byte in res:
+    for i in range(7, -1, -1):
+        bit = (byte >> i) & 1
+        num *= 2 + bit
+        if num >= m:
+            affinePBuffer.append([Mod(num, m)])
+            num = 1
+            k += 1
+            if k == affineSize:
+                affineP = Matrix(affinePBuffer, itemType=Mod)
+                affineC = H * affineP + B
+                # print(affineC)
+                k = 0
+                affinePBuffer = []
+                for j in range(affineSize):
+                    if affineC.rows[j][0] == 0:
+                        continue
+                    affinePBuffer.append(Term(affineSize - j - 1, affineC.rows[j][0]))
+                polyP = Polynomial(affinePBuffer)
+                polyC = ((polyP * polyA) + polyB) % polyMod
+                print(polyP)
+                print(polyC)
+                print(((polyC - polyB) * polyA.inverse(polyMod)) % polyMod)
+                print()
+                affinePBuffer = []
